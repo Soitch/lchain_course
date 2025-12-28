@@ -1,65 +1,43 @@
-"""
-Шаблон для генерации ответа службы поддержки в два этапа:
-1. Сначала модель формулирует уточняющие вопросы.
-2. Затем — пошаговый план решения.
 
-Параметры шаблона:
-- {product}: название продукта или сервиса
-- {issue}: краткое описание проблемы
-- {platform}: ОС, устройство, версия — где возникла проблема
-"""
-
-from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
-from modelca import MODELCA  # ваш LLM
+from langchain_core.prompts import PromptTemplate
 
-llm = MODELCA
-
-# --- Шаг 1: сгенерировать уточняющие вопросы ---
-prompt_questions = PromptTemplate.from_template(
-    "Ты — инженер поддержки. Пользователь сообщает: "
-    "«Проблема с {product}: {issue} на {platform}». "
-    "Задай не более 3 кратких уточняющих вопросов, чтобы понять суть проблемы."
+# Промт для уведомления (prompt3)
+prompt3 = PromptTemplate.from_template(
+    "Уважаемый(ая) {client_name}, напоминаем, что на курсе «{course_name}» у вас есть незавершённые элементы программы: {issues_list}. "
+    "Пожалуйста, завершите их в ближайшее время, чтобы успешно получить сертификат."
 )
 
-# --- Шаг 2: на основе контекста и вопросов — дать план ---
-prompt_plan = PromptTemplate.from_template(
-    "Ты — инженер поддержки. На основе проблемы: "
-    "«{issue} в {product} на {platform}», "
-    "и уточняющих вопросов: {questions} — "
-    "предложи краткий пошаговый план диагностики (макс. 4 шага)."
-)
+def mock_course_recommender(input_dict):
+    hobbies = input_dict["hobbies_list"].lower()  # теперь input_dict — это наш исходный словарь
+    if "фитнес" in hobbies or "скалолазание" in hobbies:
+        return "Здоровый образ жизни и профилактика травм, Основы спортивной нутрициологии"
+    elif "рыбалка" in hobbies or "путешествия" in hobbies:
+        return "Основы выживания в дикой природе, Навигация и работа с GPS"
+    elif "маркетинг" in hobbies or "цифровой" in hobbies:
+        return "Цифровой маркетинг, Аналитика в Meta и Google"
+    else:
+        return "Универсальные навыки: тайм-менеджмент и продуктивность"
 
-# --- Цепочка: сначала вопросы, потом план ---
+# Цепочка: вход → добавляем рекомендации → формируем уведомление
 chain = (
-    {"product": RunnablePassthrough(), "issue": RunnablePassthrough(), "platform": RunnablePassthrough()}
+    RunnablePassthrough()  # передаём исходный словарь: {"gift_target_name": ..., "hobbies_list": ...}
     | RunnablePassthrough.assign(
-        questions=lambda x: (prompt_questions | llm | StrOutputParser()).invoke(x)
+        recommended_courses=lambda x: mock_course_recommender(x)
     )
-    | prompt_plan
-    | llm
-    | StrOutputParser()
+    | RunnablePassthrough.assign(
+        client_name=lambda x: x["gift_target_name"],
+        course_name=lambda x: x["recommended_courses"].split(",")[0].strip(),
+        issues_list=lambda _: "не пройдён вводный тест, не подтверждена оплата"
+    )
+    | prompt3
+    | (lambda x: x)  # просто возвращаем строку
 )
 
-# --- Примеры использования ---
-examples = [
-    {
-        "product": "мобильное приложение FinApp",
-        "issue": "не приходит SMS с кодом подтверждения",
-        "platform": "Android 14, Samsung Galaxy S23"
-    },
-    {
-        "product": "веб-сервис StreamPlus",
-        "issue": "видео не грузится, круглая загрузка крутится бесконечно",
-        "platform": "Chrome 131 на Windows 11"
-    }
-]
+# Вызов — передаём словарь с нужными ключами
+result = chain.invoke({
+    "gift_target_name": "Дмитрий",
+    "hobbies_list": "фитнес, скалолазание"
+})
 
-if __name__ == "__main__":
-    for i, params in enumerate(examples, 1):
-        print(f"\n{'='*60}")
-        print(f"Пример {i}")
-        print(f"{'='*60}")
-        result = chain.invoke(params)
-        print(result)
+print(result)

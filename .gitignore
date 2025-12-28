@@ -1,0 +1,45 @@
+# Папки с кодом
+ecom-bot/
+my-ecom2/
+my-ecom3/
+ecom_bot/
+my-ecom-bot/
+e-commerce_ai_bot/
+
+
+# Кэш Python
+__pycache__/
+
+# Виртуальные окружения
+venv/
+ENV/
+env/
+.venv/
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.swp
+
+# Бинарники
+*.exe
+*.dll
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Данные
+data/
+output/
+logs/
+
+# Pyc-файлы
+*.pyc
+
+# Pip-зависимости (если не нужны в репозитории)
+# requirements.txt
+
+.env
